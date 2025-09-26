@@ -25,10 +25,12 @@ volatile unsigned long pulseCountSpeed = 0;
 volatile unsigned long pulseCountGrains = 0;
 unsigned long lastTime = 0;
 
-// ātrums
+// definējam
 float speed_kmh = 0;
-float grains_per_m2 = 0;
+int kg_per_ha= 0;
 float speed_rounded_kmh = 0;
+float th_grain_mass_kg = 0.04;
+float kg_grains = 0;
 
 
 // See the following for generating UUIDs:
@@ -50,8 +52,9 @@ void resetData() {
   interrupts();
   lastTime = millis();
   speed_kmh = 0;
-  grains_per_m2 = 0;
+  kg_per_ha = 0;
   speed_rounded_kmh = 0;
+  kg_grains = 0;
   Serial.println("Data reset completed");
 }
 
@@ -141,7 +144,7 @@ void loop() {
   unsigned long currentTime = millis();
 
   if (deviceConnected) {
-    pulseCountSpeed = 2;
+    pulseCountSpeed = 8;
     pulseCountGrains = 30;
 
 
@@ -166,19 +169,21 @@ void loop() {
       //izsēja
       float distance_m = speed * 2.0;
       float area_m2 = distance_m * 6;  //sējmašīnas platums 6m
-      float countGrains_all = countGrains * 42;
+      int countGrains_all = countGrains * 48;
       if (area_m2 > 0) {
-        grains_per_m2 = (float)countGrains_all / area_m2;
+        kg_grains = (countGrains_all * th_grain_mass_kg) / 1000; //kg
+        kg_per_ha = (kg_grains / area_m2) * 10000; //kg/ha
+
       } else {
-        grains_per_m2 = 0;
+        kg_per_ha = 0;
       };
       //izvade
       Serial.print("| Ātrums: ");
       Serial.print(speed_rounded_kmh);
       Serial.println(" km/h");
       Serial.print("| Izsēja: ");
-      Serial.print(grains_per_m2);
-      Serial.println("graudi/m2");
+      Serial.print(kg_per_ha);
+      Serial.println("kg/ha");
 
       // Nosūtām BLE
       if (pBLE2902_Speed->getNotifications()) {
@@ -186,7 +191,7 @@ void loop() {
         pCharSpeed->notify();
       }
       if (pBLE2902_Grains->getNotifications()) {
-        pCharGrains->setValue(grains_per_m2);
+        pCharGrains->setValue(kg_per_ha);
         pCharGrains->notify();
       }
 
